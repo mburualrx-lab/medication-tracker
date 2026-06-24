@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MedMinder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>My Medication Tracker</h1>
+    
+    <!-- Privacy Disclaimer -->
+    <p><em>Note: Your data is saved locally on this device and is entirely private.</em></p>
+
+    <!-- Input Form -->
+    <form id="med-form">
+        <label for="med-name">Medication Name:</label>
+        <input type="text" id="med-name" required>
+        
+        <label for="med-time">Time:</label>
+        <input type="time" id="med-time" required>
+        
+        <button type="submit">Add Medication</button>
+    </form>
+
+    <!-- Display List -->
+    <h2>Today's Schedule</h2>
+    <ul id="med-list"></ul>
+
+    <script src="app.js"></script>
+</body>
+</html>
