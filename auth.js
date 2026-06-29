@@ -3,6 +3,21 @@ const accounts = [
     { role: 'doctor', email: 'doctor@example.com', password: 'doctor123', name: 'Dr. Jane Doe' }
 ];
 
+function loadAccounts() {
+    try {
+        const savedAccounts = JSON.parse(localStorage.getItem('medAccounts')) || [];
+        return [...accounts, ...savedAccounts];
+    } catch (error) {
+        return accounts;
+    }
+}
+
+function saveAccount(account) {
+    const savedAccounts = JSON.parse(localStorage.getItem('medAccounts')) || [];
+    savedAccounts.push(account);
+    localStorage.setItem('medAccounts', JSON.stringify(savedAccounts));
+}
+
 function normalizeEmail(email) {
     return email.trim().toLowerCase();
 }
@@ -20,26 +35,70 @@ function login(event) {
     }
 
     const roleElement = document.getElementById('role');
-    const role = roleElement ? roleElement.value : 'user';
+    const role = roleElement ? roleElement.value : '';
     const email = normalizeEmail(document.getElementById('email').value);
     const password = document.getElementById('password').value;
+    const name = document.getElementById('name').value.trim();
 
-    const account = accounts.find(user => user.role === role && user.email === email && user.password === password);
+    const allAccounts = loadAccounts();
+    let account = allAccounts.find(user => user.role === role && user.email === email && user.password === password);
 
     if (!account) {
-        showAuthMessage('Invalid credentials for selected role.', true);
+        account = allAccounts.find(user => user.email === email && user.password === password);
+    }
+
+    if (!account) {
+        showAuthMessage('Invalid credentials. Please use one of the sample accounts or create a new account.', true);
         return;
+    }
+
+    if (!account.name && name) {
+        account.name = name;
     }
 
     const authUser = {
         role: account.role,
         email: account.email,
         name: account.name,
+        patientId: account.role === 'user' ? 1 : 2,
         loggedAt: Date.now()
     };
 
     localStorage.setItem('medAuthUser', JSON.stringify(authUser));
     window.location.href = account.role === 'doctor' ? 'doctor.html' : 'med.html';
+}
+
+function register(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const role = document.getElementById('register-role').value;
+    const name = document.getElementById('register-name').value.trim();
+    const email = normalizeEmail(document.getElementById('register-email').value);
+    const password = document.getElementById('register-password').value;
+
+    if (!name || !email || !password) {
+        showAuthMessage('Please fill in all registration fields.', true);
+        return;
+    }
+
+    const existingAccount = loadAccounts().find(user => user.email === email);
+    if (existingAccount) {
+        showAuthMessage('An account with that email already exists.', true);
+        return;
+    }
+
+    const newAccount = {
+        role,
+        email,
+        password,
+        name
+    };
+
+    saveAccount(newAccount);
+    showAuthMessage(`Account created for ${name}. You can now log in.`, false);
+    document.getElementById('register-form').reset();
 }
 
 function getAuthUser() {
@@ -82,11 +141,55 @@ function logout() {
     window.location.href = 'index.html';
 }
 
+function getApiBaseUrl() {
+    return 'http://127.0.0.1:8000';
+}
+
+function getActivePatientId() {
+    const user = getAuthUser();
+    if (!user) return null;
+    return user.patientId ?? (user.role === 'doctor' ? 0 : 1);
+}
+
+async function loadPrescriptions(patientId) {
+    const response = await fetch(`${getApiBaseUrl()}/api/medications/${patientId}`);
+    if (!response.ok) {
+        throw new Error('Unable to load prescriptions from the backend.');
+    }
+    return response.json();
+}
+
+async function submitPrescription({ patientId, medicationName, dosage, frequency, doctorName }) {
+    const response = await fetch(`${getApiBaseUrl()}/api/prescribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            patient_id: Number(patientId),
+            doctor_name: doctorName || 'Doctor',
+            medication_name: medicationName,
+            dosage,
+            frequency
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Unable to save the prescription.');
+    }
+
+    return response.json();
+}
+
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('login-form');
         if (form) {
             form.addEventListener('submit', login);
+        }
+
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', register);
         }
     });
 }

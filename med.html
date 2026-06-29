@@ -6,26 +6,33 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>My Medication Tracker</h1>
-    
-    <!-- Privacy Disclaimer -->
-    <p class="privacy-note"><em>Note: Your data is saved locally on this device and is entirely private.</em></p>
+    <div class="login-card">
+        <h1>My Medication Tracker</h1>
+        <p class="privacy-note"><em>Welcome, <strong id="user-name"></strong>. Your medication list is synced with the Python backend.</em></p>
 
-    <!-- Input Form -->
-    <form id="med-form">
-        <label for="med-name">Medication Name:</label>
-        <input type="text" id="med-name" required>
-        
-        <label for="med-time">Time:</label>
-        <input type="time" id="med-time" required>
-        
-        <button type="submit">Add Medication</button>
-    </form>
+        <form id="med-form">
+            <label for="med-name">Medication Name:</label>
+            <input type="text" id="med-name" required>
 
-    <!-- Display List -->
-    <h2>Today's Schedule</h2>
-    <ul id="med-list"></ul>
+            <label for="med-time">Time:</label>
+            <input type="time" id="med-time" required>
 
+            <button type="submit">Add Medication</button>
+        </form>
+
+        <p id="sync-status" class="auth-message"></p>
+
+        <h2>Today's Schedule</h2>
+        <ul id="med-list"></ul>
+    </div>
+
+    <script src="auth.js"></script>
     <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            requireAuth('user');
+            injectUserName('#user-name');
+        });
+    </script>
 </body>
 </html>

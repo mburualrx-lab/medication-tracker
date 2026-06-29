@@ -8,11 +8,18 @@
 </head>
 <body>
     <div class="login-card">
-        <h1>Patient Login</h1>
+        <h1>Login</h1>
         <p class="auth-message" id="auth-message"></p>
 
         <form id="login-form">
-            <input type="hidden" id="role" value="user">
+            <label for="role">Role</label>
+            <select id="role">
+                <option value="user">Patient</option>
+                <option value="doctor">Doctor</option>
+            </select>
+
+            <label for="name">Full Name</label>
+            <input type="text" id="name" placeholder="Enter your name" required>
 
             <label for="email">Email</label>
             <input type="email" id="email" placeholder="user@example.com" required>
@@ -23,13 +30,36 @@
             <button type="submit">Login</button>
         </form>
 
+        <hr>
+
+        <h2>Register New Account</h2>
+        <form id="register-form">
+            <label for="register-role">Role</label>
+            <select id="register-role">
+                <option value="user">Patient</option>
+                <option value="doctor">Doctor</option>
+            </select>
+
+            <label for="register-name">Full Name</label>
+            <input type="text" id="register-name" placeholder="Enter your name" required>
+
+            <label for="register-email">Email</label>
+            <input type="email" id="register-email" placeholder="new@example.com" required>
+
+            <label for="register-password">Password</label>
+            <input type="password" id="register-password" placeholder="Create password" required>
+
+            <button type="submit">Create Account</button>
+        </form>
+
         <div class="info-card">
-            <p>Use these sample patient credentials to log in:</p>
+            <p>Use these sample credentials to log in:</p>
             <ul>
                 <li><strong>Patient:</strong> user@example.com / user123</li>
+                <li><strong>Doctor:</strong> doctor@example.com / doctor123</li>
             </ul>
             <p>
-                not recorded? Get recorded..
+                Not recorded? Get recorded..
                 <a href="patient.html">patient</a>
             </p>
         </div>

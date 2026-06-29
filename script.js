@@ -1,41 +1,57 @@
-// 1. Load medications and ask for Notification Permission on startup
-document.addEventListener('DOMContentLoaded', () => {
-    displayMeds();
-    requestNotificationPermission();
-    // Check every 60 seconds if a medication is due
-    setInterval(checkMedicationTimes, 60000); 
-});
+function getLocalMeds() {
+    try {
+        const savedMeds = localStorage.getItem('meds');
+        return savedMeds ? JSON.parse(savedMeds) : [];
+    } catch (error) {
+        return [];
+    }
+}
 
-const medForm = document.getElementById('med-form');
-medForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('med-name').value;
-    const time = document.getElementById('med-time').value;
-    
-    const newMed = { name, time };
-    
-    let meds = localStorage.getItem('meds') ? JSON.parse(localStorage.getItem('meds')) : [];
-    meds.push(newMed);
+function saveLocalMeds(meds) {
     localStorage.setItem('meds', JSON.stringify(meds));
-    
-    displayMeds();
-    medForm.reset();
-});
+}
 
-function displayMeds() {
+function displayMeds(meds = null) {
     const medList = document.getElementById('med-list');
+    if (!medList) return;
+
     medList.innerHTML = '';
-    let meds = localStorage.getItem('meds') ? JSON.parse(localStorage.getItem('meds')) : [];
-    
-    meds.forEach((med) => {
+    const medicationList = Array.isArray(meds) ? meds : getLocalMeds();
+
+    if (!medicationList.length) {
+        const emptyState = document.createElement('li');
+        emptyState.textContent = 'No medications yet. Add one to get started.';
+        medList.appendChild(emptyState);
+        return;
+    }
+
+    medicationList.forEach((med) => {
         const li = document.createElement('li');
-        li.textContent = `💊 ${med.name} at ${med.time}`;
+        const name = med.medication_name || med.name || 'Medication';
+        const time = med.frequency || med.time || 'scheduled';
+        const dosage = med.dosage ? ` • ${med.dosage}` : '';
+        li.textContent = `💊 ${name} ${time}${dosage}`;
         medList.appendChild(li);
     });
 }
 
-// 2. Ethical Consent: Explicitly ask the user if they want notifications
+async function refreshMeds() {
+    const patientId = getActivePatientId();
+    if (!patientId) return;
+
+    displayMeds(getLocalMeds());
+
+    try {
+        const serverMeds = await loadPrescriptions(patientId);
+        if (Array.isArray(serverMeds)) {
+            saveLocalMeds(serverMeds);
+            displayMeds(serverMeds);
+        }
+    } catch (error) {
+        console.warn('Backend sync failed:', error);
+    }
+}
+
 function requestNotificationPermission() {
     if ("Notification" in window) {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -44,22 +60,71 @@ function requestNotificationPermission() {
     }
 }
 
-// 3. Time Checker: Triggers a notification when the time matches
 function checkMedicationTimes() {
     if (Notification.permission !== "granted") return;
 
     const now = new Date();
-    // Formats current time as "HH:MM" to match the input format
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    let meds = localStorage.getItem('meds') ? JSON.parse(localStorage.getItem('meds')) : [];
+    const meds = getLocalMeds();
 
-    meds.forEach(med => {
-        if (med.time === currentTime) {
-            new Notification("Medication Reminder!", {
-                body: `It's time to take your ${med.name}.`,
-                icon: "https://cdn-icons-png.flaticon.com/512/822/822143.png" // Simple pill icon link
+    meds.forEach((med) => {
+        const time = med.frequency || med.time || '';
+        if (time.includes(currentTime)) {
+            new Notification('Medication Reminder!', {
+                body: `It's time to take your ${med.medication_name || med.name}.`,
+                icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
             });
         }
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const authUser = getAuthUser();
+    if (!authUser || authUser.role !== 'user') {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    const medForm = document.getElementById('med-form');
+    if (medForm) {
+        medForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('med-name').value.trim();
+            const time = document.getElementById('med-time').value;
+            const patientId = getActivePatientId();
+
+            if (!name || !time || !patientId) return;
+
+            try {
+                await submitPrescription({
+                    patientId,
+                    medicationName: name,
+                    dosage: 'As scheduled',
+                    frequency: `At ${time}`,
+                    doctorName: authUser.name
+                });
+
+                await refreshMeds();
+                medForm.reset();
+                const status = document.getElementById('sync-status');
+                if (status) {
+                    status.textContent = 'Medication synced to the backend.';
+                    status.className = 'auth-message success';
+                }
+            } catch (error) {
+                const status = document.getElementById('sync-status');
+                if (status) {
+                    status.textContent = error.message || 'Could not sync medication.';
+                    status.className = 'auth-message error';
+                }
+            }
+        });
+    }
+
+    displayMeds(getLocalMeds());
+    requestNotificationPermission();
+    setInterval(checkMedicationTimes, 60000);
+    refreshMeds();
+});
