@@ -11,6 +11,61 @@ function saveLocalMeds(meds) {
     localStorage.setItem('meds', JSON.stringify(meds));
 }
 
+let reminderTimers = [];
+
+function clearReminderTimers() {
+    reminderTimers.forEach((timerId) => clearTimeout(timerId));
+    reminderTimers = [];
+}
+
+function parseMedicationTime(med) {
+    const directTime = med.time || '';
+    if (/^\d{1,2}:\d{2}$/.test(directTime)) {
+        return directTime;
+    }
+
+    const frequencyText = med.frequency || '';
+    const match = frequencyText.match(/(\d{1,2}):(\d{2})/);
+    if (match) {
+        return `${match[1].padStart(2, '0')}:${match[2]}`;
+    }
+
+    return null;
+}
+
+function scheduleMedicationReminders(meds = getLocalMeds()) {
+    clearReminderTimers();
+
+    if (!Array.isArray(meds)) return;
+
+    meds.forEach((med) => {
+        const targetTime = parseMedicationTime(med);
+        if (!targetTime) return;
+
+        const [hours, minutes] = targetTime.split(':').map(Number);
+        const now = new Date();
+        const nextReminderTime = new Date(now);
+        nextReminderTime.setHours(hours, minutes, 0, 0);
+
+        if (nextReminderTime <= now) {
+            nextReminderTime.setDate(nextReminderTime.getDate() + 1);
+        }
+
+        const delay = nextReminderTime.getTime() - now.getTime();
+        const timerId = window.setTimeout(() => {
+            if (Notification.permission === 'granted') {
+                new Notification('Medication Reminder!', {
+                    body: `It's time to take your ${med.medication_name || med.name}.`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
+                });
+            }
+            scheduleMedicationReminders(meds);
+        }, delay);
+
+        reminderTimers.push(timerId);
+    });
+}
+
 function displayMeds(meds = null) {
     const medList = document.getElementById('med-list');
     if (!medList) return;
@@ -39,13 +94,16 @@ async function refreshMeds() {
     const patientId = getActivePatientId();
     if (!patientId) return;
 
-    displayMeds(getLocalMeds());
+    const localMeds = getLocalMeds();
+    displayMeds(localMeds);
+    scheduleMedicationReminders(localMeds);
 
     try {
         const serverMeds = await loadPrescriptions(patientId);
         if (Array.isArray(serverMeds)) {
             saveLocalMeds(serverMeds);
             displayMeds(serverMeds);
+            scheduleMedicationReminders(serverMeds);
         }
     } catch (error) {
         console.warn('Backend sync failed:', error);
@@ -58,25 +116,6 @@ function requestNotificationPermission() {
             Notification.requestPermission();
         }
     }
-}
-
-function checkMedicationTimes() {
-    if (Notification.permission !== "granted") return;
-
-    const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    const meds = getLocalMeds();
-
-    meds.forEach((med) => {
-        const time = med.frequency || med.time || '';
-        if (time.includes(currentTime)) {
-            new Notification('Medication Reminder!', {
-                body: `It's time to take your ${med.medication_name || med.name}.`,
-                icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png'
-            });
-        }
-    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -125,6 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     displayMeds(getLocalMeds());
     requestNotificationPermission();
-    setInterval(checkMedicationTimes, 60000);
+    scheduleMedicationReminders(getLocalMeds());
     refreshMeds();
 });
