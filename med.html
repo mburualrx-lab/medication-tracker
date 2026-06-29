@@ -7,6 +7,7 @@
 </head>
 <body>
     <div class="login-card">
+        <p class="page-nav"><a href="index.html">← Back to login</a></p>
         <h1>My Medication Tracker</h1>
         <p class="privacy-note"><em>Welcome, <strong id="user-name"></strong>. Your medication list is synced with the Python backend.</em></p>
 
@@ -20,6 +21,7 @@
             <button type="submit">Add Medication</button>
         </form>
 
+        <p id="page-status" class="auth-message"></p>
         <p id="sync-status" class="auth-message"></p>
 
         <h2>Today's Schedule</h2>
@@ -30,7 +32,9 @@
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            requireAuth('user');
+            if (!ensureRolePageAccess('user')) {
+                return;
+            }
             injectUserName('#user-name');
         });
     </script>

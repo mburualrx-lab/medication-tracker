@@ -8,6 +8,7 @@
 </head>
 <body>
     <div class="login-card">
+        <p class="page-nav"><a href="index.html">← Back to login</a></p>
         <div class="header-row">
             <div>
                 <h1>Doctor Dashboard</h1>
@@ -16,9 +17,11 @@
             <button class="logout-btn" id="logout-button">Logout</button>
         </div>
 
+        <p id="page-status" class="auth-message"></p>
+
         <section class="info-card">
-            <h2>Protected access</h2>
-            <p>This dashboard is only available to authenticated doctors. Use the provided credentials from the login page.</p>
+            <h2>Prescription Center</h2>
+            <p>Create a medication plan for a patient and it will appear on their medication page with the reminder time.</p>
         </section>
 
         <section>
@@ -28,13 +31,13 @@
                 <input type="number" id="patient-id" value="1" required>
 
                 <label for="medication-name">Medication Name</label>
-                <input type="text" id="medication-name" required>
+                <input type="text" id="medication-name" placeholder="e.g. Amoxicillin" required>
 
                 <label for="dosage">Dosage</label>
-                <input type="text" id="dosage" required>
+                <input type="text" id="dosage" placeholder="e.g. 500mg" required>
 
-                <label for="frequency">Frequency</label>
-                <input type="text" id="frequency" required>
+                <label for="frequency">Reminder Time</label>
+                <input type="time" id="frequency" required>
 
                 <button type="submit">Send Prescription</button>
             </form>
@@ -50,7 +53,10 @@
     <script src="auth.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            requireAuth('doctor');
+            if (!ensureRolePageAccess('doctor')) {
+                return;
+            }
+
             injectUserName('#user-name');
             document.getElementById('logout-button').addEventListener('click', logout);
 
@@ -74,7 +80,7 @@
 
                     prescriptions.forEach((prescription) => {
                         const item = document.createElement('li');
-                        item.textContent = `💊 ${prescription.medication_name} — ${prescription.dosage} • ${prescription.frequency}`;
+                        item.innerHTML = `💊 <strong>${prescription.medication_name}</strong><br><span>${prescription.dosage} • ${prescription.frequency}</span>`;
                         prescriptionList.appendChild(item);
                     });
                 } catch (error) {
@@ -88,14 +94,20 @@
                 const patientId = document.getElementById('patient-id').value;
                 const medicationName = document.getElementById('medication-name').value.trim();
                 const dosage = document.getElementById('dosage').value.trim();
-                const frequency = document.getElementById('frequency').value.trim();
+                const frequency = document.getElementById('frequency').value;
+
+                if (!patientId || !medicationName || !dosage || !frequency) {
+                    statusBox.textContent = 'Please complete all fields.';
+                    statusBox.className = 'auth-message error';
+                    return;
+                }
 
                 try {
                     await submitPrescription({
                         patientId,
                         medicationName,
                         dosage,
-                        frequency,
+                        frequency: `At ${frequency}`,
                         doctorName: getAuthUser().name
                     });
                     statusBox.textContent = 'Prescription sent successfully.';

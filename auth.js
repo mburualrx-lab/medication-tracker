@@ -29,6 +29,13 @@ function showAuthMessage(message, isError = true) {
     element.className = isError ? 'auth-message error' : 'auth-message success';
 }
 
+function showPageStatus(message, isError = true, elementId = 'page-status') {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    element.textContent = message;
+    element.className = isError ? 'auth-message error' : 'auth-message success';
+}
+
 function login(event) {
     if (event) {
         event.preventDefault();
@@ -112,11 +119,11 @@ function getAuthUser() {
 function requireAuth(expectedRole) {
     const user = getAuthUser();
     if (!user) {
-        window.location.href = 'index.html';
+        showPageStatus('Please sign in first to access this page.', true);
         return null;
     }
     if (expectedRole && user.role !== expectedRole) {
-        window.location.href = 'index.html';
+        showPageStatus('This page is for the other role. Use the navigation links below.', true);
         return null;
     }
     return user;
@@ -124,8 +131,23 @@ function requireAuth(expectedRole) {
 
 function redirectIfAuthenticated() {
     const user = getAuthUser();
-    if (!user) return;
-    window.location.href = user.role === 'doctor' ? 'doctor.html' : 'med.html';
+    if (!user) return false;
+
+    const message = document.getElementById('auth-message');
+    if (message) {
+        message.textContent = `You are already signed in as ${user.name}.`;
+        message.className = 'auth-message success';
+    }
+
+    const infoCard = document.querySelector('.info-card');
+    if (infoCard && !document.getElementById('auth-links')) {
+        const links = document.createElement('p');
+        links.id = 'auth-links';
+        links.innerHTML = `<a href="med.html">Open patient page</a> · <a href="doctor.html">Open doctor page</a>`;
+        infoCard.appendChild(links);
+    }
+
+    return true;
 }
 
 function injectUserName(selector) {
@@ -141,6 +163,19 @@ function logout() {
     window.location.href = 'index.html';
 }
 
+function ensureRolePageAccess(expectedRole) {
+    const user = getAuthUser();
+    if (!user) {
+        showPageStatus('Please sign in first to access this page.', true);
+        return false;
+    }
+    if (user.role !== expectedRole) {
+        showPageStatus('This page is for the other role. Use the back link below to return.', true);
+        return false;
+    }
+    return true;
+}
+
 function getApiBaseUrl() {
     return 'http://127.0.0.1:8000';
 }
@@ -151,33 +186,72 @@ function getActivePatientId() {
     return user.patientId ?? (user.role === 'doctor' ? 0 : 1);
 }
 
-async function loadPrescriptions(patientId) {
-    const response = await fetch(`${getApiBaseUrl()}/api/medications/${patientId}`);
-    if (!response.ok) {
-        throw new Error('Unable to load prescriptions from the backend.');
+function getStoredPrescriptions() {
+    try {
+        return JSON.parse(localStorage.getItem('medPrescriptions')) || [];
+    } catch (error) {
+        return [];
     }
-    return response.json();
+}
+
+function saveStoredPrescriptions(prescriptions) {
+    localStorage.setItem('medPrescriptions', JSON.stringify(prescriptions));
+}
+
+function addStoredPrescription(prescription) {
+    const prescriptions = getStoredPrescriptions();
+    prescriptions.push(prescription);
+    saveStoredPrescriptions(prescriptions);
+    return prescriptions;
+}
+
+async function loadPrescriptions(patientId) {
+    const prescriptions = getStoredPrescriptions().filter((item) => String(item.patient_id) === String(patientId));
+    if (prescriptions.length) {
+        return prescriptions;
+    }
+
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/api/medications/${patientId}`);
+        if (!response.ok) {
+            throw new Error('Unable to load prescriptions from the backend.');
+        }
+        const backendPrescriptions = await response.json();
+        saveStoredPrescriptions(backendPrescriptions);
+        return backendPrescriptions;
+    } catch (error) {
+        return [];
+    }
 }
 
 async function submitPrescription({ patientId, medicationName, dosage, frequency, doctorName }) {
-    const response = await fetch(`${getApiBaseUrl()}/api/prescribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            patient_id: Number(patientId),
-            doctor_name: doctorName || 'Doctor',
-            medication_name: medicationName,
-            dosage,
-            frequency
-        })
-    });
+    const prescription = {
+        patient_id: Number(patientId),
+        doctor_name: doctorName || 'Doctor',
+        medication_name: medicationName,
+        dosage,
+        frequency,
+        time: frequency.includes(':') ? frequency : `At ${frequency}`
+    };
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Unable to save the prescription.');
+    addStoredPrescription(prescription);
+
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/api/prescribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(prescription)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Unable to save the prescription.');
+        }
+
+        return response.json();
+    } catch (error) {
+        return { status: 'saved-locally', message: 'Saved locally while backend is unavailable.' };
     }
-
-    return response.json();
 }
 
 if (typeof document !== 'undefined') {
