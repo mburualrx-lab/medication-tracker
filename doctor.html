@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-card">
+        <div class="header-row">
+            <div>
+                <h1>Doctor Dashboard</h1>
+                <p>Welcome, <strong id="user-name"></strong>.</p>
+            </div>
+            <button class="logout-btn" id="logout-button">Logout</button>
+        </div>
+
+        <section class="info-card">
+            <h2>Protected access</h2>
+            <p>This dashboard is only available to authenticated doctors. Use the provided credentials from the login page.</p>
+        </section>
+
+        <section>
+            <h2>Pending tasks</h2>
+            <ul>
+                <li>Review patient medication schedules</li>
+                <li>Manage care plans</li>
+                <li>Check medication reminders</li>
+            </ul>
+        </section>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            requireAuth('doctor');
+            injectUserName('#user-name');
+            document.getElementById('logout-button').addEventListener('click', logout);
+        });
+    </script>
+</body>
+</html>

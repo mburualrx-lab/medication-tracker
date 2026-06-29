@@ -80,3 +80,61 @@ li {
     border-left: 4px solid #27ae60;
     font-weight: 500;
 }
+
+select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    background: white;
+}
+
+.login-card {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 26px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.auth-message {
+    min-height: 1.25rem;
+    margin-bottom: 12px;
+    color: #c0392b;
+    font-size: 0.95rem;
+}
+
+.auth-message.success {
+    color: #27ae60;
+}
+
+.logout-btn {
+    background-color: #c0392b;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.logout-btn:hover {
+    background-color: #a93226;
+}
+
+.info-card {
+    background: #e8f4f8;
+    padding: 16px;
+    border-radius: 10px;
+    border-left: 4px solid #3498db;
+    margin-bottom: 20px;
+}
