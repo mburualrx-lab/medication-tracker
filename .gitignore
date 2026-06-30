@@ -1,0 +1,23 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VS Code workspace and settings
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Local environment files
+env/
+venv/
+*.env
+
+# Logs
+*.log
+
+# Backup files
+*~
+*.swp
