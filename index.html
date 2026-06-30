@@ -11,21 +11,28 @@
         <h1>Login</h1>
         <p class="auth-message" id="auth-message"></p>
 
-        <form id="login-form">
+        <form id="login-form" autocomplete="on">
             <label for="role">Role</label>
             <select id="role">
-                <option value="user">Patient</option>
                 <option value="doctor">Doctor</option>
+                <option value="nurse">Nurse</option>
             </select>
 
             <label for="name">Full Name</label>
-            <input type="text" id="name" placeholder="Enter your name" required>
+            <input type="text" id="name" name="name" autocomplete="name" placeholder="Enter your name" required>
 
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder="user@example.com" required>
+            <input type="email" id="email" name="email" autocomplete="username" placeholder="user@example.com" required>
 
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Enter password" required>
+            <div class="password-field">
+                <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter password" required>
+                <button type="button" class="password-toggle" data-target="password" aria-label="Show password">👁️</button>
+            </div>
+
+            <div class="remember-row">
+                <label class="checkbox-label"><input type="checkbox" id="remember-me" name="remember-me"> Remember me</label>
+            </div>
 
             <button type="submit">Login</button>
         </form>
@@ -33,21 +40,30 @@
         <hr>
 
         <h2>Register New Account</h2>
-        <form id="register-form">
+        <form id="register-form" autocomplete="on">
             <label for="register-role">Role</label>
             <select id="register-role">
-                <option value="user">Patient</option>
                 <option value="doctor">Doctor</option>
+                <option value="nurse">Nurse</option>
             </select>
 
             <label for="register-name">Full Name</label>
-            <input type="text" id="register-name" placeholder="Enter your name" required>
+            <input type="text" id="register-name" name="register-name" autocomplete="name" placeholder="Enter your name" required>
 
             <label for="register-email">Email</label>
-            <input type="email" id="register-email" placeholder="new@example.com" required>
+            <input type="email" id="register-email" name="register-email" autocomplete="email" placeholder="new@example.com" required>
 
             <label for="register-password">Password</label>
-            <input type="password" id="register-password" placeholder="Create password" required>
+            <div class="password-field">
+                <input type="password" id="register-password" name="register-password" autocomplete="new-password" placeholder="Create password" required>
+                <button type="button" class="password-toggle" data-target="register-password" aria-label="Show password">👁️</button>
+            </div>
+
+            <label for="register-confirm-password">Confirm Password</label>
+            <div class="password-field">
+                <input type="password" id="register-confirm-password" name="register-confirm-password" autocomplete="new-password" placeholder="Confirm password" required>
+                <button type="button" class="password-toggle" data-target="register-confirm-password" aria-label="Show password">👁️</button>
+            </div>
 
             <button type="submit">Create Account</button>
         </form>
@@ -56,9 +72,11 @@
             <p id="page-status" class="auth-message"></p>
             <p>Use these sample credentials to log in:</p>
             <ul>
-                <li><strong>Patient:</strong> user@example.com / user123</li>
                 <li><strong>Doctor:</strong> doctor@example.com / doctor123</li>
+                <li><strong>Doctor:</strong> doctor2@example.com / doctor456</li>
+                <li><strong>Nurse:</strong> nurse@example.com / nurse123</li>
             </ul>
+            <p><em>Patient access is handled by a separate app; this system is for doctors and nurses only.</em></p>
             <p>
                 Want to open the doctor dashboard directly? <a href="doctor.html">Doctor page</a>
             </p>

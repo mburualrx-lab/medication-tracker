@@ -7,47 +7,70 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="login-card">
-        <p class="page-nav"><a href="index.html">← Back to login</a></p>
-        <div class="header-row">
-            <div>
-                <h1>Doctor Dashboard</h1>
-                <p>Welcome, <strong id="user-name"></strong>.</p>
+    <div class="dashboard-page">
+        <div class="dashboard-card">
+            <p class="page-nav"><a href="index.html">← Back to login</a></p>
+            <div class="dashboard-header">
+                <div>
+                    <h1>Doctor Dashboard</h1>
+                    <p class="dashboard-subtitle">Welcome, <strong id="user-name"></strong>.</p>
+                </div>
+                <button class="logout-btn" id="logout-button">Logout</button>
             </div>
-            <button class="logout-btn" id="logout-button">Logout</button>
+
+            <p id="page-status" class="auth-message"></p>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Assigned Patients</span>
+                    <strong id="assigned-patients-count">0</strong>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Prescriptions</span>
+                    <strong id="prescription-count">0</strong>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Last Prescription</span>
+                    <strong id="last-prescription-summary">None</strong>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <section class="panel-card">
+                    <h2>Send a prescription</h2>
+                    <p class="panel-description">Choose one of your assigned patients and create a prescription. Only your prescriptions will show below.</p>
+                    <form id="prescription-form">
+                        <label for="patient-id">Patient</label>
+                        <select id="patient-id" required></select>
+
+                        <label for="medication-name">Medication Name</label>
+                        <input type="text" id="medication-name" placeholder="e.g. Amoxicillin" required>
+
+                        <label for="dosage">Dosage</label>
+                        <input type="text" id="dosage" placeholder="e.g. 500mg" required>
+
+                        <label for="frequency">Reminder Time</label>
+                        <input type="time" id="frequency" required>
+
+                        <button type="submit">Send Prescription</button>
+                    </form>
+
+                    <div class="assigned-card">
+                        <h3>Assigned patients</h3>
+                        <ul id="assigned-patients-list" class="assigned-patient-list"></ul>
+                        <p class="panel-note">Mark a patient as done when you're finished so the nurse can reassign them to another doctor.</p>
+                    </div>
+
+                    <p id="doctor-status" class="auth-message"></p>
+                </section>
+
+                <section class="panel-card">
+                    <h2>Current prescriptions</h2>
+                    <p class="panel-description">These are prescriptions you created for the selected patient.</p>
+                    <ul id="prescription-list"></ul>
+                </section>
+            </div>
         </div>
-
-        <p id="page-status" class="auth-message"></p>
-
-        <section class="info-card">
-            <h2>Prescription Center</h2>
-            <p>Create a medication plan for a patient and it will appear on their medication page with the reminder time.</p>
-        </section>
-
-        <section>
-            <h2>Send a prescription</h2>
-            <form id="prescription-form">
-                <label for="patient-id">Patient ID</label>
-                <input type="number" id="patient-id" value="1" required>
-
-                <label for="medication-name">Medication Name</label>
-                <input type="text" id="medication-name" placeholder="e.g. Amoxicillin" required>
-
-                <label for="dosage">Dosage</label>
-                <input type="text" id="dosage" placeholder="e.g. 500mg" required>
-
-                <label for="frequency">Reminder Time</label>
-                <input type="time" id="frequency" required>
-
-                <button type="submit">Send Prescription</button>
-            </form>
-            <p id="doctor-status" class="auth-message"></p>
-        </section>
-
-        <section>
-            <h2>Current prescriptions</h2>
-            <ul id="prescription-list"></ul>
-        </section>
     </div>
 
     <script src="auth.js"></script>
@@ -63,20 +86,80 @@
             const form = document.getElementById('prescription-form');
             const statusBox = document.getElementById('doctor-status');
             const prescriptionList = document.getElementById('prescription-list');
+            const patientSelect = document.getElementById('patient-id');
+            const patientCount = document.getElementById('assigned-patients-count');
+            const assignedPatientList = document.getElementById('assigned-patients-list');
+            const prescriptionCount = document.getElementById('prescription-count');
+            const lastPrescriptionSummary = document.getElementById('last-prescription-summary');
+            const currentDoctor = getAuthUser();
+            let assignedPatients = getAssignedPatients(currentDoctor?.email);
+
+            function renderAssignedPatients() {
+                assignedPatients = getAssignedPatients(currentDoctor?.email);
+                patientCount.textContent = assignedPatients.length;
+
+                patientSelect.innerHTML = assignedPatients
+                    .map((patient) => `<option value="${patient.id}">${patient.name} (#${patient.id})</option>`)
+                    .join('');
+
+                assignedPatientList.innerHTML = assignedPatients
+                    .map((patient) => `
+                        <li>
+                            <span>${patient.name} (#${patient.id})</span>
+                            <button class="small-button done-button" data-patient-id="${patient.id}">Done</button>
+                        </li>
+                    `)
+                    .join('');
+
+                assignedPatientList.querySelectorAll('.done-button').forEach((button) => {
+                    button.addEventListener('click', async () => {
+                        const patientId = button.dataset.patientId;
+                        assignPatientToDoctor(patientId, null);
+                        statusBox.textContent = `Patient #${patientId} released for reassignment.`;
+                        statusBox.className = 'auth-message success';
+                        renderAssignedPatients();
+                        if (assignedPatients.length) {
+                            patientSelect.value = assignedPatients[0].id;
+                            await refreshPrescriptions();
+                        } else {
+                            form.querySelectorAll('input, button, select').forEach((el) => el.disabled = true);
+                            prescriptionList.innerHTML = '';
+                            prescriptionCount.textContent = '0';
+                            lastPrescriptionSummary.textContent = 'None';
+                        }
+                    });
+                });
+            }
+
+            if (!assignedPatients.length) {
+                statusBox.textContent = 'No patients are assigned to this doctor yet.';
+                statusBox.className = 'auth-message error';
+                form.querySelectorAll('input, button, select').forEach((el) => el.disabled = true);
+                return;
+            }
+
+            renderAssignedPatients();
+            patientSelect.addEventListener('change', refreshPrescriptions);
+            await refreshPrescriptions();
 
             async function refreshPrescriptions() {
-                const patientId = document.getElementById('patient-id').value;
+                const patientId = patientSelect.value;
                 if (!patientId) return;
 
                 try {
-                    const prescriptions = await loadPrescriptions(patientId);
+                    const prescriptions = await loadPrescriptions(patientId, currentDoctor?.email, currentDoctor?.name);
                     prescriptionList.innerHTML = '';
+                    prescriptionCount.textContent = prescriptions.length;
                     if (!prescriptions.length) {
+                        lastPrescriptionSummary.textContent = 'None';
                         const item = document.createElement('li');
                         item.textContent = 'No prescriptions found for this patient yet.';
                         prescriptionList.appendChild(item);
                         return;
                     }
+
+                    const latest = prescriptions[prescriptions.length - 1];
+                    lastPrescriptionSummary.textContent = `${latest.medication_name} • ${latest.dosage}`;
 
                     prescriptions.forEach((prescription) => {
                         const item = document.createElement('li');
@@ -86,6 +169,8 @@
                 } catch (error) {
                     statusBox.textContent = error.message || 'Unable to load prescriptions.';
                     statusBox.className = 'auth-message error';
+                    prescriptionCount.textContent = '0';
+                    lastPrescriptionSummary.textContent = 'None';
                 }
             }
 
@@ -102,13 +187,20 @@
                     return;
                 }
 
+                if (!assignedPatients.some((patient) => String(patient.id) === String(patientId))) {
+                    statusBox.textContent = 'You are not assigned to this patient.';
+                    statusBox.className = 'auth-message error';
+                    return;
+                }
+
                 try {
                     await submitPrescription({
                         patientId,
                         medicationName,
                         dosage,
                         frequency: `At ${frequency}`,
-                        doctorName: getAuthUser().name
+                        doctorName: currentDoctor.name,
+                        doctorEmail: currentDoctor.email
                     });
                     statusBox.textContent = 'Prescription sent successfully.';
                     statusBox.className = 'auth-message success';

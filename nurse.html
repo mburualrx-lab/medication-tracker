@@ -1,0 +1,203 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nurse Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-page">
+        <div class="dashboard-card">
+            <p class="page-nav"><a href="index.html">← Back to login</a></p>
+            <div class="dashboard-header">
+                <div>
+                    <h1>Nurse Dashboard</h1>
+                    <p class="dashboard-subtitle">Manage patient assignments and doctor availability.</p>
+                </div>
+                <button class="logout-btn" id="logout-button">Logout</button>
+            </div>
+
+            <div class="data-grid">
+                <section class="table-card">
+                    <h2>Register a patient</h2>
+                    <p class="panel-description">Create a patient record and optionally assign them to one of your doctors immediately.</p>
+                    <form id="patient-register-form" class="panel-form">
+                        <label for="new-patient-name">Patient name</label>
+                        <input type="text" id="new-patient-name" placeholder="e.g. John Smith" required>
+
+                        <label for="new-patient-doctor">Assign to doctor</label>
+                        <select id="new-patient-doctor"></select>
+
+                        <button type="submit">Create patient</button>
+                    </form>
+                </section>
+
+                <section class="table-card">
+                    <h2>Patient roster</h2>
+                    <p class="panel-description">Select a patient and assign them to the available doctor.</p>
+                    <table class="data-table" id="patient-table">
+                        <thead>
+                            <tr>
+                                <th>Patient</th>
+                                <th>Assigned Doctor</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </section>
+
+                <section class="table-card">
+                    <h2>Doctor availability</h2>
+                    <p class="panel-description">See which doctors are available and how many patients each has.</p>
+                    <table class="data-table" id="doctor-table">
+                        <thead>
+                            <tr>
+                                <th>Doctor</th>
+                                <th>Patients</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </section>
+            </div>
+
+            <p id="nurse-status" class="auth-message"></p>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!ensureRolePageAccess('nurse')) {
+                return;
+            }
+
+            document.getElementById('logout-button').addEventListener('click', logout);
+            const patientTable = document.querySelector('#patient-table tbody');
+            const doctorTable = document.querySelector('#doctor-table tbody');
+            const statusBox = document.getElementById('nurse-status');
+            const registerForm = document.getElementById('patient-register-form');
+            const patientNameInput = document.getElementById('new-patient-name');
+            const patientDoctorSelect = document.getElementById('new-patient-doctor');
+
+            const doctors = getDoctors();
+
+            function updateDoctorOptions(selectElement, selectedEmail = '') {
+                selectElement.innerHTML = [`
+                    <option value="">Unassigned</option>
+                    ${doctors.map((doctor) => `
+                        <option value="${doctor.email}" ${doctor.email === selectedEmail ? 'selected' : ''}>
+                            ${doctor.name}
+                        </option>
+                    `).join('')}
+                `].join('');
+            }
+
+            let statusTimer = null;
+
+            function setStatus(message, isError = false) {
+                statusBox.textContent = message;
+                statusBox.className = isError ? 'auth-message error' : 'auth-message success';
+                if (statusTimer) {
+                    clearTimeout(statusTimer);
+                }
+                statusTimer = setTimeout(() => {
+                    statusBox.textContent = '';
+                    statusBox.className = 'auth-message';
+                    statusTimer = null;
+                }, 4000);
+            }
+
+            function refreshTables() {
+                const patients = getPatients();
+                const assignments = loadDoctorPatientAssignments();
+
+                patientTable.innerHTML = patients.map((patient) => {
+                    const doctorEmail = getPatientAssignment(patient.id);
+                    const doctorName = doctorEmail ? getDoctorDisplayName(doctorEmail) : 'Unassigned';
+                    const doctorOptions = [`
+                        <option value="">Unassigned</option>
+                        ${doctors.map((doctor) => `
+                            <option value="${doctor.email}" ${doctor.email === doctorEmail ? 'selected' : ''}>
+                                ${doctor.name}
+                            </option>
+                        `).join('')}
+                    `].join('');
+
+                    return `
+                        <tr>
+                            <td>${patient.name} (#${patient.id})</td>
+                            <td>${doctorName}</td>
+                            <td>
+                                <select class="assign-select" data-patient-id="${patient.id}">
+                                    ${doctorOptions}
+                                </select>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                doctorTable.innerHTML = doctors.map((doctor) => {
+                    const assigned = getAssignedPatients(doctor.email);
+                    const assignedCount = assigned.length;
+                    const statusClass = assignedCount === 0 ? 'available' : 'busy';
+                    const statusLabel = assignedCount === 0
+                        ? 'Available'
+                        : assignedCount === 1
+                            ? 'With patient'
+                            : `With ${assignedCount} patients`;
+                    const tooltip = assignedCount > 0
+                        ? assigned.map((patient) => `${patient.name} (#${patient.id})`).join(', ')
+                        : 'No current patient';
+
+                    return `
+                        <tr>
+                            <td>${doctor.name}</td>
+                            <td>${assignedCount}</td>
+                            <td><span class="status-pill ${statusClass}" title="${tooltip}">${statusLabel}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+
+                document.querySelectorAll('.assign-select').forEach((select) => {
+                    select.addEventListener('change', async (event) => {
+                        const patientId = event.target.dataset.patientId;
+                        const doctorEmail = event.target.value || null;
+                        assignPatientToDoctor(patientId, doctorEmail);
+                        setStatus(`Patient #${patientId} assigned successfully.`);
+                        refreshTables();
+                    });
+                });
+            }
+
+            updateDoctorOptions(patientDoctorSelect);
+
+            registerForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const name = patientNameInput.value.trim();
+                const assignedEmail = patientDoctorSelect.value || null;
+
+                if (!name) {
+                    setStatus('Please enter a patient name.', true);
+                    return;
+                }
+
+                const newPatient = createPatient(name);
+                if (assignedEmail) {
+                    assignPatientToDoctor(newPatient.id, assignedEmail);
+                }
+
+                setStatus(`Patient ${newPatient.name} (#${newPatient.id}) created successfully.`);
+                registerForm.reset();
+                updateDoctorOptions(patientDoctorSelect);
+                refreshTables();
+            });
+
+            refreshTables();
+        });
+    </script>
+</body>
+</html>

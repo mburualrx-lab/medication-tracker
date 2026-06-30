@@ -26,7 +26,7 @@ database_mock = []
 
 @app.get("/")
 def home():
-    return {"message": "Your Medication Backend is running smoothly!"}
+    return {"message": "Backend  running smoothly!"}
 
 
 @app.get("/api/health")

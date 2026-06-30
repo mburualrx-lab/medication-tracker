@@ -85,7 +85,7 @@ function displayMeds(meds = null) {
         const name = med.medication_name || med.name || 'Medication';
         const time = med.frequency || med.time || 'scheduled';
         const dosage = med.dosage ? ` • ${med.dosage}` : '';
-        li.textContent = `💊 ${name} ${time}${dosage}`;
+        li.innerHTML = `💊 <strong>${name}</strong><br><span>${time}${dosage}</span>`;
         medList.appendChild(li);
     });
 }
