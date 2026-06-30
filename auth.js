@@ -1,6 +1,4 @@
 const accounts = [
-    { role: 'doctor', email: 'doctor@example.com', password: 'doctor123', name: 'Dr. Jane Doe' },
-    { role: 'doctor', email: 'doctor2@example.com', password: 'doctor456', name: 'Dr. Sam Green' },
     { role: 'nurse', email: 'nurse@example.com', password: 'nurse123', name: 'Nurse Joy' }
 ];
 
@@ -10,10 +8,7 @@ const patients = [
     { id: 3, name: 'Patient Three' }
 ];
 
-const defaultDoctorPatientAssignments = {
-    'doctor@example.com': [1],
-    'doctor2@example.com': []
-};
+const defaultDoctorPatientAssignments = {};
 
 function loadDoctorPatientAssignments() {
     try {
